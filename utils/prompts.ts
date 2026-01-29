@@ -26,12 +26,17 @@ export const PROMPTS = {
     - Existing Elements: 
     ${JSON.stringify(simplifiedLayout.elements)}
 
+    **ALLOWED NEW ELEMENT TYPES**:
+    ${Object.keys(scene.styles).filter(k => !['ground','driving_lane','parking_space','wall'].includes(k)).join(', ')}
+
     **CRITICAL DESIGN RULES**:
     ${scene.promptConfig.geometricRules}
 
-    **GENERATION TASKS**:
-    - Focus on details specific to this scene type.
-    - **IMMUTABILITY RULE**: You are **FORBIDDEN** from outputting, modifying, or deleting major structural elements (walls, main floors/roads). Only output NEW detail elements.
+    **STRICT GENERATION CONSTRAINTS**:
+    1. **DO NOT GENERATE 'parking_space'**. (These are added automatically by the geometric engine).
+    2. **DO NOT GENERATE 'ground', 'driving_lane', or 'wall'**. (Structural elements are immutable).
+    3. **DO NOT INVENT TYPES**. Use only the allowed list (e.g., use 'pillar', not 'column').
+    4. Focus on facilities: 'pillar', 'fire_extinguisher', 'guidance_sign', 'speed_bump', 'pedestrian_path'.
 
     **OUTPUT FORMAT**:
     - JSON with 'reasoning_plan' and 'elements'.

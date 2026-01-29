@@ -318,6 +318,19 @@ const guidanceSignDrawer: ElementDrawer = (g, d, style) => {
      .style("shape-rendering", "geometricPrecision");
 };
 
+const PARKING_NORMALIZATION = {
+    'column': ElementTypes.PILLAR,
+    'post': ElementTypes.PILLAR,
+    'barrier': ElementTypes.WALL,
+    'utility_box': ElementTypes.PILLAR, // Treat as generic obstacle
+    'parking_spot': ElementTypes.PARKING_SPACE,
+    'parking_bay': ElementTypes.PARKING_SPACE,
+    'road': ElementTypes.ROAD,
+    'lane': ElementTypes.ROAD,
+    'path': ElementTypes.SIDEWALK,
+    'pedestrian_walkway': ElementTypes.SIDEWALK
+};
+
 export const ParkingScene: SceneDefinition = {
   id: 'parking_underground',
   name: 'Underground Parking',
@@ -381,6 +394,8 @@ export const ParkingScene: SceneDefinition = {
     [ElementTypes.LANE_LINE]: laneLineDrawer,
     [ElementTypes.GUIDANCE_SIGN]: guidanceSignDrawer
   },
+
+  elementNormalization: PARKING_NORMALIZATION,
 
   postProcessAlgorithms: [
     cleanIntersections,

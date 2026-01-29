@@ -84,7 +84,8 @@ const MapRenderer = forwardRef<MapRendererHandle>((props, ref) => {
       .attr("transform", d => `translate(${d.x}, ${d.y})`)
       .each(function(this: any, d) {
         const g = d3.select(this);
-        const style = activeScene.styles[d.type] || { fill: '#ff00ff', opacity: 1 };
+        // Fallback to neutral gray instead of magenta if style is missing
+        const style = activeScene.styles[d.type] || { fill: '#64748b', opacity: 0.5 };
         
         // Check for Custom Drawer
         const customDrawer = activeScene.customDrawers?.[d.type];

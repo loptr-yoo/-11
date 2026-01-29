@@ -90,6 +90,9 @@ export interface SceneDefinition {
   styles: Record<string, ElementStyle>;
   customDrawers?: Record<string, ElementDrawer>; 
   zOrder?: string[]; 
+  
+  // New: Handle AI Hallucinations (e.g. "column" -> "pillar")
+  elementNormalization?: Record<string, string>;
 
   // 3. Logic & Algorithms
   postProcessAlgorithms?: LayoutAlgorithm[]; 

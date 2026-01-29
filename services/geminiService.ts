@@ -5,8 +5,8 @@ import { ParkingLayout, ElementType, ConstraintViolation, LayoutElement, SceneDe
 import { validateLayout, getIntersectionBox } from "../utils/geometry";
 import { PROMPTS } from "../utils/prompts";
 
-const MODEL_PRIMARY = "gemini-2.5-pro";
-const MODEL_FALLBACK = "gemini-3-pro-preview"; 
+const MODEL_PRIMARY = "gemini-3-pro-preview";
+const MODEL_FALLBACK = "gemini-2.5-pro"; 
 
 let cachedTier: 'HIGH' | 'LOW' | null = null;
 const getApiKey = () => process.env.API_KEY;
@@ -62,19 +62,25 @@ const cleanAndParseJSON = (text: string): any => {
   }
 };
 
-const mapToInternalLayout = (rawData: any): ParkingLayout => ({
+const mapToInternalLayout = (rawData: any, scene: SceneDefinition): ParkingLayout => ({
     width: Number(rawData.width || 800),
     height: Number(rawData.height || 600),
-    elements: (rawData.elements || []).map((e: any) => ({
-        id: String(e.id || `el_${Math.random().toString(36).substr(2, 9)}`),
-        type: e.t || e.type, 
-        x: Number(e.x || 0),
-        y: Number(e.y || 0),
-        width: Number(e.w ?? e.width ?? 10),
-        height: Number(e.h ?? e.height ?? 10),
-        rotation: Number(e.r || 0),
-        label: e.l
-    }))
+    elements: (rawData.elements || []).map((e: any) => {
+        const rawType = (e.t || e.type || "wall").toLowerCase().trim().replace(/\s+/g, '_');
+        // Apply scene-specific normalization (e.g. column -> pillar)
+        const normalizedType = scene.elementNormalization?.[rawType] || rawType;
+        
+        return {
+            id: String(e.id || `el_${Math.random().toString(36).substr(2, 9)}`),
+            type: normalizedType,
+            x: Number(e.x || 0),
+            y: Number(e.y || 0),
+            width: Number(e.w ?? e.width ?? 10),
+            height: Number(e.h ?? e.height ?? 10),
+            rotation: Number(e.r || 0),
+            label: e.l
+        };
+    })
 });
 
 const calculateScore = (violations: ConstraintViolation[]): number => {
@@ -113,7 +119,7 @@ const runIterativeFix = async (layout: ParkingLayout, ai: GoogleGenAI, model: st
             onLog?.(`🔧 Pass ${pass}: Layout validated (Score: 0).`);
             break;
         }
-        if (score >= lastScore && pass > 1) {
+        if (score >= lastScore && pass > 2) {
             onLog?.(`🌡️ Stagnation at Pass ${pass} (Score: ${score}).`);
             break;
         }
@@ -137,7 +143,7 @@ const runIterativeFix = async (layout: ParkingLayout, ai: GoogleGenAI, model: st
             const rawData = cleanAndParseJSON(response.text || "{}");
             if (rawData.fix_strategy && onLog) rawData.fix_strategy.forEach((s: string) => onLog(`🤖 AI Action: ${s}`));
             
-            const fixedLayout = mapToInternalLayout(rawData);
+            const fixedLayout = mapToInternalLayout(rawData, scene);
             currentLayout = { ...currentLayout, elements: mergeLayoutElements(currentLayout.elements, fixedLayout.elements) };
         } catch (e: any) {
             onLog?.(`⚠️ Fix failed: ${e.message}`);
@@ -166,7 +172,7 @@ export const generateParkingLayout = async (description: string, scene: SceneDef
     const rawData = cleanAndParseJSON(response.text);
     if (rawData.reasoning_plan && onLog) onLog(`🧠 Plan: ${rawData.reasoning_plan}`);
     
-    let layout = mapToInternalLayout(rawData);
+    let layout = mapToInternalLayout(rawData, scene);
     layout = await runIterativeFix(layout, ai, currentModel, scene, onLog);
     return postProcessLayout(layout);
   } catch (error: any) {
@@ -193,7 +199,7 @@ export const augmentLayoutWithRoads = async (currentLayout: ParkingLayout, scene
     const rawData = cleanAndParseJSON(response.text);
     if (rawData.reasoning_plan && onLog) onLog(`✨ AI Plan: ${rawData.reasoning_plan}`);
 
-    const aiGeneratedLayout = mapToInternalLayout(rawData);
+    const aiGeneratedLayout = mapToInternalLayout(rawData, scene);
     let layout: ParkingLayout = { width: currentLayout.width, height: currentLayout.height, elements: [...currentLayout.elements, ...aiGeneratedLayout.elements] };
 
     // Execute Pluggable Algorithms
